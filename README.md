@@ -24,13 +24,8 @@ If the API is unavailable or you skip the key, the page uses a **fallback** stor
 
 ## How to run
 
-Open the file directly:
-
-```bash
-open /Users/sasiprethamnakka/Downloads/projects/csv_analyzer/CSV_Analyzer.html
-```
-
-Or open the `csv_analyzer` folder and double-click `CSV_Analyzer.html`.
+1. Clone this repository.
+2. Open `CSV_Analyzer.html` in your browser (double-click or `open CSV_Analyzer.html` on macOS).
 
 - **Upload**: drag and drop a `.csv` onto the zone, or use **Choose File**.
 - **Sample data**: use **Load sample dataset** to try the flow without your own file.
@@ -58,14 +53,22 @@ There are no special shortcuts; everything is click or drag-and-drop.
 
 | Path | Role |
 |------|------|
-| `csv_analyzer/CSV_Analyzer.html` | Single-file app (markup, styles, scripts) |
-| `csv_analyzer/README.md` | This document |
+| `CSV_Analyzer.html` | Single-file app (markup, styles, scripts) |
+| `README.md` | This document |
 
 ## Troubleshooting
 
 - **“API key is required”** — Enter a key via **API Key**, or continue with the automatic fallback story (no live model).
 - **“Failed to connect to AI service”** — Network, CORS, invalid key, or quota; fallback runs after the alert.
 - **Empty or wrong charts** — Charts use the **first** numeric/text columns and **first N rows** for previews; very wide or messy CSVs may need cleaning for meaningful plots.
+
+## Author
+
+Built by **sasi pretham**.
+
+## License
+
+This project is open source and available for personal and commercial use.
 
 ## Credits
 
