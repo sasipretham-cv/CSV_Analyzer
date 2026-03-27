@@ -1,0 +1,1017 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DataStory — AI Dataset Storyteller</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --ink: #0d0d0d;
+    --paper: #faf8f3;
+    --coral: #ff4d3a;
+    --gold: #f5c842;
+    --teal: #00b4a6;
+    --violet: #7c3aed;
+    --sky: #3b82f6;
+    --mint: #d1fae5;
+    --accent2: #ff9500;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Noise texture overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 9999;
+    opacity: 0.6;
+  }
+
+  /* HEADER */
+  header {
+    padding: 2rem 3rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 2.5px solid var(--ink);
+  }
+
+  .logo {
+    display: flex;
+    align-items: baseline;
+    gap: 0.3rem;
+  }
+
+  .logo-main {
+    font-family: 'Playfair Display', serif;
+    font-weight: 900;
+    font-size: 1.8rem;
+    letter-spacing: -0.02em;
+  }
+
+  .logo-tag {
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    background: var(--coral);
+    color: white;
+    padding: 2px 7px;
+    border-radius: 2px;
+  }
+
+  .header-pill {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: var(--ink);
+    color: var(--paper);
+    padding: 0.5rem 1.2rem;
+    border-radius: 100px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    letter-spacing: 0.03em;
+  }
+
+  .pulse {
+    width: 8px; height: 8px;
+    background: var(--gold);
+    border-radius: 50%;
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.7); }
+  }
+
+  /* HERO */
+  .hero {
+    padding: 5rem 3rem 3rem;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4rem;
+    align-items: center;
+    max-width: 1300px;
+    margin: 0 auto;
+  }
+
+  .hero-text h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(3rem, 6vw, 5.5rem);
+    font-weight: 900;
+    line-height: 0.95;
+    letter-spacing: -0.03em;
+    margin-bottom: 1.5rem;
+  }
+
+  .hero-text h1 em {
+    font-style: italic;
+    color: var(--coral);
+    display: block;
+  }
+
+  .hero-text p {
+    font-size: 1.1rem;
+    line-height: 1.7;
+    color: #444;
+    max-width: 440px;
+    font-weight: 300;
+  }
+
+  /* UPLOAD ZONE */
+  .upload-zone {
+    border: 2.5px dashed var(--ink);
+    border-radius: 16px;
+    padding: 3rem 2rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background: white;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .upload-zone::before {
+    content: '';
+    position: absolute;
+    top: -50%; left: -50%;
+    width: 200%; height: 200%;
+    background: conic-gradient(from 0deg, var(--coral), var(--gold), var(--teal), var(--violet), var(--coral));
+    opacity: 0;
+    transition: opacity 0.4s;
+    z-index: 0;
+    border-radius: 50%;
+    animation: spin 4s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .upload-zone:hover::before, .upload-zone.dragover::before { opacity: 0.08; }
+
+  .upload-zone:hover, .upload-zone.dragover {
+    border-color: var(--coral);
+    transform: translateY(-3px);
+    box-shadow: 0 20px 60px rgba(255,77,58,0.15);
+  }
+
+  .upload-zone > * { position: relative; z-index: 1; }
+
+  .upload-icon {
+    font-size: 3.5rem;
+    margin-bottom: 1rem;
+    display: block;
+  }
+
+  .upload-zone h3 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+  }
+
+  .upload-zone p {
+    font-size: 0.9rem;
+    color: #666;
+    margin-bottom: 1.5rem;
+  }
+
+  .btn-primary {
+    display: inline-block;
+    background: var(--ink);
+    color: var(--paper);
+    padding: 0.8rem 2rem;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn-primary:hover {
+    background: var(--coral);
+    transform: translateY(-1px);
+  }
+
+  .sample-note {
+    margin-top: 1rem;
+    font-size: 0.78rem;
+    color: #999;
+  }
+
+  .sample-btn {
+    background: none;
+    border: none;
+    color: var(--teal);
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: underline;
+    font-size: 0.78rem;
+  }
+
+  #fileInput { display: none; }
+
+  /* DIVIDER */
+  .marquee-bar {
+    background: var(--ink);
+    color: var(--gold);
+    padding: 0.8rem 0;
+    overflow: hidden;
+    white-space: nowrap;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.8rem;
+    letter-spacing: 0.1em;
+    margin: 2rem 0;
+  }
+
+  .marquee-inner {
+    display: inline-block;
+    animation: marquee 20s linear infinite;
+  }
+
+  @keyframes marquee {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+  }
+
+  /* RESULTS */
+  #results {
+    display: none;
+    max-width: 1300px;
+    margin: 0 auto;
+    padding: 2rem 3rem 5rem;
+    animation: fadeUp 0.6s ease forwards;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(30px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .results-header {
+    display: flex;
+    align-items: baseline;
+    gap: 1rem;
+    margin-bottom: 2.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 2.5px solid var(--ink);
+  }
+
+  .results-header h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 2.5rem;
+    font-weight: 900;
+  }
+
+  .filename-tag {
+    background: var(--gold);
+    color: var(--ink);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-weight: 500;
+  }
+
+  /* STATS STRIP */
+  .stats-strip {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    background: var(--ink);
+    border: 2.5px solid var(--ink);
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 2.5rem;
+  }
+
+  .stat-card {
+    background: white;
+    padding: 1.5rem;
+    text-align: center;
+    transition: background 0.2s;
+  }
+
+  .stat-card:hover { background: var(--gold); }
+
+  .stat-number {
+    font-family: 'Playfair Display', serif;
+    font-size: 2.5rem;
+    font-weight: 900;
+    line-height: 1;
+    margin-bottom: 0.3rem;
+  }
+
+  .stat-label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #666;
+  }
+
+  /* STORY BOX */
+  .story-box {
+    background: var(--ink);
+    color: var(--paper);
+    border-radius: 16px;
+    padding: 2.5rem;
+    margin-bottom: 2.5rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .story-box::before {
+    content: '"';
+    position: absolute;
+    top: -1rem;
+    left: 1.5rem;
+    font-family: 'Playfair Display', serif;
+    font-size: 10rem;
+    color: var(--coral);
+    opacity: 0.3;
+    line-height: 1;
+  }
+
+  .story-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .story-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: rgba(255,255,255,0.2);
+  }
+
+  #aiStory {
+    font-size: 1.05rem;
+    line-height: 1.9;
+    font-weight: 300;
+    position: relative;
+    z-index: 1;
+    min-height: 80px;
+  }
+
+  .typing-cursor {
+    display: inline-block;
+    width: 2px;
+    height: 1.1em;
+    background: var(--gold);
+    animation: blink 0.8s infinite;
+    vertical-align: text-bottom;
+    margin-left: 2px;
+  }
+
+  @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
+  /* CHARTS GRID */
+  .charts-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    margin-bottom: 2.5rem;
+  }
+
+  .chart-card {
+    background: white;
+    border: 2.5px solid var(--ink);
+    border-radius: 16px;
+    padding: 1.5rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .chart-card::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 4px;
+  }
+
+  .chart-card:nth-child(1)::after { background: var(--coral); }
+  .chart-card:nth-child(2)::after { background: var(--teal); }
+  .chart-card:nth-child(3)::after { background: var(--violet); }
+  .chart-card:nth-child(4)::after { background: var(--gold); }
+
+  .chart-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin-bottom: 0.3rem;
+  }
+
+  .chart-subtitle {
+    font-size: 0.75rem;
+    color: #888;
+    margin-bottom: 1rem;
+  }
+
+  .chart-wrap { height: 220px; }
+
+  /* COLUMN PILLS */
+  .columns-section { margin-bottom: 2.5rem; }
+
+  .section-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.6rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+  }
+
+  .col-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+  }
+
+  .col-pill {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-radius: 100px;
+    font-size: 0.82rem;
+    font-weight: 500;
+    border: 2px solid var(--ink);
+    cursor: default;
+    transition: transform 0.15s;
+  }
+
+  .col-pill:hover { transform: scale(1.03); }
+
+  .col-pill.numeric { background: var(--mint); }
+  .col-pill.text { background: #fef3c7; }
+  .col-pill.date { background: #ede9fe; }
+
+  .col-type {
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    opacity: 0.6;
+  }
+
+  /* INSIGHTS */
+  .insights-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    margin-bottom: 2.5rem;
+  }
+
+  .insight-card {
+    padding: 1.5rem;
+    border-radius: 12px;
+    border: 2.5px solid var(--ink);
+    position: relative;
+  }
+
+  .insight-card:nth-child(1) { background: var(--coral); color: white; }
+  .insight-card:nth-child(2) { background: var(--teal); color: white; }
+  .insight-card:nth-child(3) { background: var(--violet); color: white; }
+  .insight-card:nth-child(4) { background: var(--gold); color: var(--ink); }
+  .insight-card:nth-child(5) { background: var(--sky); color: white; }
+  .insight-card:nth-child(6) { background: #f97316; color: white; }
+
+  .insight-icon { font-size: 1.8rem; margin-bottom: 0.6rem; }
+
+  .insight-card h4 {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    opacity: 0.8;
+    margin-bottom: 0.4rem;
+  }
+
+  .insight-card p {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.2rem;
+    font-weight: 700;
+    line-height: 1.3;
+  }
+
+  /* LOADING */
+  .loading-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(250,248,243,0.92);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 1.5rem;
+    backdrop-filter: blur(4px);
+  }
+
+  .loading-overlay.active { display: flex; }
+
+  .loading-text {
+    font-family: 'Playfair Display', serif;
+    font-size: 2rem;
+    font-weight: 700;
+  }
+
+  .loading-sub {
+    font-size: 0.9rem;
+    color: #666;
+  }
+
+  .loading-bar {
+    width: 300px;
+    height: 4px;
+    background: #e5e5e5;
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .loading-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--coral), var(--gold), var(--teal));
+    border-radius: 2px;
+    animation: loading 2s ease-in-out infinite;
+    background-size: 200%;
+  }
+
+  @keyframes loading {
+    0% { width: 0%; background-position: 0%; }
+    50% { width: 70%; background-position: 100%; }
+    100% { width: 100%; background-position: 0%; }
+  }
+
+  /* FOOTER */
+  footer {
+    text-align: center;
+    padding: 1.5rem;
+    border-top: 2px solid var(--ink);
+    font-size: 0.75rem;
+    color: #888;
+    font-family: 'DM Mono', monospace;
+  }
+
+  footer strong { color: var(--ink); }
+
+  @media (max-width: 768px) {
+    .hero { grid-template-columns: 1fr; gap: 2rem; padding: 2rem 1.5rem; }
+    .stats-strip { grid-template-columns: repeat(2, 1fr); }
+    .charts-grid { grid-template-columns: 1fr; }
+    .insights-grid { grid-template-columns: 1fr 1fr; }
+    header { padding: 1rem 1.5rem; }
+    #results { padding: 1.5rem; }
+  }
+</style>
+</head>
+<body>
+
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="loading-text">Reading your data...</div>
+  <div class="loading-sub">Generating AI insights & visualizations</div>
+  <div class="loading-bar"><div class="loading-fill"></div></div>
+</div>
+
+<header>
+  <div class="logo">
+    <span class="logo-main">DataStory</span>
+    <span class="logo-tag">AI</span>
+  </div>
+  <div style="display: flex; align-items: center; gap: 1rem;">
+    <button class="sample-btn" onclick="setApiKey()" style="font-size: 0.75rem; padding: 0.3rem 0.8rem;">API Key</button>
+    <div class="header-pill">
+      <div class="pulse"></div>
+      Powered by sasi pretham
+    </div>
+  </div>
+</header>
+
+<div class="marquee-bar">
+  <span class="marquee-inner">
+    &nbsp;&nbsp;UPLOAD CSV &bull; AI GENERATES INSIGHTS &bull; AUTOMATIC CHARTS &bull; INSTANT STORYTELLING &bull; DATA ANALYSIS &bull; PATTERN DETECTION &bull; SMART SUMMARIES &bull;&nbsp;&nbsp;
+    UPLOAD CSV &bull; AI GENERATES INSIGHTS &bull; AUTOMATIC CHARTS &bull; INSTANT STORYTELLING &bull; DATA ANALYSIS &bull; PATTERN DETECTION &bull; SMART SUMMARIES &bull;&nbsp;&nbsp;
+  </span>
+</div>
+
+<section class="hero">
+  <div class="hero-text">
+    <h1>Your data<br>has a <em>story.</em><br>Let AI tell it.</h1>
+    <p>Upload any CSV file and watch as AI reads your data, finds hidden patterns, generates vivid charts, and narrates insights — in seconds.</p>
+  </div>
+
+  <div>
+    <div class="upload-zone" id="uploadZone">
+      <span class="upload-icon">📊</span>
+      <h3>Drop your CSV here</h3>
+      <p>Drag & drop or click to browse</p>
+      <button class="btn-primary" onclick="document.getElementById('fileInput').click()">Choose File</button>
+      <p class="sample-note">No CSV? <button class="sample-btn" onclick="loadSampleData()">Load sample dataset →</button></p>
+    </div>
+    <input type="file" id="fileInput" accept=".csv">
+  </div>
+</section>
+
+<section id="results">
+  <div class="results-header">
+    <h2>Your Data Story</h2>
+    <span class="filename-tag" id="filenameTag">data.csv</span>
+  </div>
+
+  <div class="stats-strip" id="statsStrip"></div>
+
+  <div class="story-box">
+    <div class="story-label">✦ AI Narrative</div>
+    <div id="aiStory"><span class="typing-cursor"></span></div>
+  </div>
+
+  <div class="columns-section">
+    <h3 class="section-title">Column Inventory</h3>
+    <div class="col-grid" id="colGrid"></div>
+  </div>
+
+  <div class="insights-grid" id="insightsGrid"></div>
+
+  <div class="charts-grid" id="chartsGrid"></div>
+</section>
+
+<footer>
+  Built by <strong>sasi pretham</strong> + Chart.js + PapaParse &nbsp;·&nbsp; DataStory — AI Dataset Storyteller
+</footer>
+
+<script>
+const ANTHROPIC_API = "https://api.anthropic.com/v1/messages";
+// ⚠️ SECURITY NOTE: Storing API keys in client-side code exposes them to anyone viewing the page source.
+// For production, use a backend proxy server to handle API calls securely.
+// Set your Anthropic API key here (or use localStorage/getApiKey() function below)
+const ANTHROPIC_API_KEY = localStorage.getItem('anthropic_api_key') || '';
+
+// Helper function to get API key (checks localStorage first, then prompts user)
+function getApiKey() {
+  let apiKey = localStorage.getItem('anthropic_api_key');
+  if (!apiKey) {
+    apiKey = prompt('Please enter your Anthropic API key:');
+    if (apiKey) {
+      localStorage.setItem('anthropic_api_key', apiKey);
+    }
+  }
+  return apiKey;
+}
+
+// Function to set/update API key
+function setApiKey() {
+  const currentKey = localStorage.getItem('anthropic_api_key') || '';
+  const newKey = prompt('Enter your Anthropic API key:\n\n(Leave empty to clear current key)', currentKey);
+  if (newKey !== null) {
+    if (newKey.trim() === '') {
+      localStorage.removeItem('anthropic_api_key');
+      alert('API key cleared.');
+    } else {
+      localStorage.setItem('anthropic_api_key', newKey.trim());
+      alert('API key saved successfully!');
+    }
+  }
+}
+
+let charts = [];
+
+// ─── Drag & Drop ───
+const zone = document.getElementById('uploadZone');
+zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
+zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+zone.addEventListener('drop', e => {
+  e.preventDefault(); zone.classList.remove('dragover');
+  const file = e.dataTransfer.files[0];
+  if (file && file.name.endsWith('.csv')) processFile(file);
+});
+zone.addEventListener('click', () => document.getElementById('fileInput').click());
+document.getElementById('fileInput').addEventListener('change', e => {
+  if (e.target.files[0]) processFile(e.target.files[0]);
+});
+
+// ─── Sample Data ───
+function loadSampleData() {
+  const csv = `Product,Category,Sales,Units,Rating,Month
+Laptop Pro,Electronics,12500,5,4.8,January
+Wireless Earbuds,Electronics,8900,45,4.6,January
+Running Shoes,Sports,3200,32,4.7,February
+Coffee Maker,Kitchen,1800,18,4.3,February
+Smart Watch,Electronics,9500,25,4.5,March
+Yoga Mat,Sports,950,38,4.9,March
+Blender,Kitchen,2300,23,4.2,April
+Headphones,Electronics,6700,33,4.7,April
+Tennis Racket,Sports,1500,15,4.4,May
+Air Fryer,Kitchen,3100,31,4.6,May
+Gaming Mouse,Electronics,4200,42,4.8,June
+Protein Powder,Sports,2800,56,4.5,June
+Espresso Machine,Kitchen,5600,14,4.7,July
+Tablet,Electronics,11200,28,4.6,July
+Dumbbells,Sports,1900,19,4.8,August`;
+  parseCSV(csv, 'sample_sales_data.csv');
+}
+
+// ─── Process File ───
+function processFile(file) {
+  const reader = new FileReader();
+  reader.onload = e => parseCSV(e.target.result, file.name);
+  reader.readAsText(file);
+}
+
+function parseCSV(text, filename) {
+  const result = Papa.parse(text, { header: true, skipEmptyLines: true, dynamicTyping: true });
+  if (!result.data.length) { alert('Could not parse CSV. Please check the file.'); return; }
+  analyzeData(result.data, result.meta.fields, filename);
+}
+
+// ─── Analyze ───
+function analyzeData(data, columns, filename) {
+  document.getElementById('loadingOverlay').classList.add('active');
+
+  const numericCols = columns.filter(c => typeof data[0][c] === 'number');
+  const textCols = columns.filter(c => typeof data[0][c] === 'string');
+  const stats = {};
+
+  numericCols.forEach(col => {
+    const vals = data.map(r => r[col]).filter(v => v !== null && !isNaN(v));
+    stats[col] = {
+      min: Math.min(...vals),
+      max: Math.max(...vals),
+      sum: vals.reduce((a,b)=>a+b,0),
+      avg: vals.reduce((a,b)=>a+b,0)/vals.length,
+      count: vals.length
+    };
+  });
+
+  const preview = data.slice(0, 20).map(r => {
+    const obj = {};
+    columns.forEach(c => obj[c] = r[c]);
+    return obj;
+  });
+
+  const prompt = `You are an expert data storyteller and analyst. Analyze this dataset and craft a compelling narrative.
+
+Dataset: "${filename}"
+Rows: ${data.length}
+Columns: ${columns.join(', ')}
+Numeric columns: ${numericCols.join(', ')}
+Text/Category columns: ${textCols.join(', ')}
+
+Sample data (first 20 rows): ${JSON.stringify(preview)}
+
+Column statistics: ${JSON.stringify(stats)}
+
+Write a compelling 3-4 sentence narrative story about this dataset. Be specific with numbers. Highlight the most interesting patterns, surprises, or trends. Make it engaging and insightful — like a data journalist writing for a magazine. Then on a new line write "INSIGHTS:" followed by exactly 6 bullet points (one per line, no bullet symbol, just the text), each being a sharp, specific, quantified insight about the data. Keep each insight under 12 words. Format strictly:
+[narrative paragraph]
+INSIGHTS:
+insight 1
+insight 2
+insight 3
+insight 4
+insight 5
+insight 6`;
+
+  // Get API key (prompts user if not set)
+  const apiKey = getApiKey();
+  if (!apiKey) {
+    alert('API key is required to generate AI insights. Using fallback story instead.');
+    const text = generateFallbackStory(data, columns, numericCols, stats, filename);
+    renderResults(data, columns, numericCols, textCols, stats, filename, text);
+    return;
+  }
+
+  fetch(ANTHROPIC_API, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01'
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 1000,
+      messages: [{ role: 'user', content: prompt }]
+    })
+  })
+  .then(r => {
+    if (!r.ok) {
+      throw new Error(`API error: ${r.status} ${r.statusText}`);
+    }
+    return r.json();
+  })
+  .then(d => {
+    const text = d.content?.[0]?.text || generateFallbackStory(data, columns, numericCols, stats, filename);
+    renderResults(data, columns, numericCols, textCols, stats, filename, text);
+  })
+  .catch(err => {
+    console.error('API request failed:', err);
+    alert('Failed to connect to AI service. Using fallback story instead.');
+    const text = generateFallbackStory(data, columns, numericCols, stats, filename);
+    renderResults(data, columns, numericCols, textCols, stats, filename, text);
+  });
+}
+
+function generateFallbackStory(data, columns, numericCols, stats, filename) {
+  const rows = data.length;
+  const cols = columns.length;
+  let story = `This dataset "${filename}" contains ${rows} records across ${cols} dimensions, offering a rich view of ${numericCols.join(', ')}. `;
+  if (numericCols.length > 0) {
+    const col = numericCols[0];
+    story += `The ${col} ranges from ${stats[col].min.toFixed(1)} to ${stats[col].max.toFixed(1)}, with an average of ${stats[col].avg.toFixed(1)}. `;
+  }
+  story += `With ${cols} variables to explore, there are numerous patterns waiting to be uncovered in this rich dataset.`;
+
+  const insights = numericCols.slice(0, 3).map(col =>
+    `${col}: avg ${stats[col].avg.toFixed(1)}, range ${stats[col].min.toFixed(1)}–${stats[col].max.toFixed(1)}`
+  );
+  while (insights.length < 6) insights.push(`${columns[insights.length % columns.length]} spans ${data.length} distinct records`);
+
+  return story + '\nINSIGHTS:\n' + insights.slice(0,6).join('\n');
+}
+
+// ─── Render ───
+function renderResults(data, columns, numericCols, textCols, stats, filename, aiText) {
+  // Destroy old charts
+  charts.forEach(c => c.destroy());
+  charts = [];
+
+  document.getElementById('loadingOverlay').classList.remove('active');
+  document.getElementById('results').style.display = 'block';
+  document.getElementById('filenameTag').textContent = filename;
+
+  // Scroll
+  setTimeout(() => document.getElementById('results').scrollIntoView({ behavior: 'smooth' }), 100);
+
+  // Stats strip
+  const strip = document.getElementById('statsStrip');
+  strip.innerHTML = `
+    <div class="stat-card"><div class="stat-number">${data.length.toLocaleString()}</div><div class="stat-label">Total Rows</div></div>
+    <div class="stat-card"><div class="stat-number">${columns.length}</div><div class="stat-label">Columns</div></div>
+    <div class="stat-card"><div class="stat-number">${numericCols.length}</div><div class="stat-label">Numeric Fields</div></div>
+    <div class="stat-card"><div class="stat-number">${textCols.length}</div><div class="stat-label">Category Fields</div></div>
+  `;
+
+  // Parse AI text
+  const parts = aiText.split('INSIGHTS:');
+  const narrative = parts[0].trim();
+  const insightLines = (parts[1] || '').trim().split('\n').filter(l => l.trim()).slice(0, 6);
+
+  // Typewriter
+  const storyEl = document.getElementById('aiStory');
+  storyEl.innerHTML = '<span class="typing-cursor"></span>';
+  let i = 0;
+  const cursor = storyEl.querySelector('.typing-cursor');
+  function typeChar() {
+    if (i < narrative.length) {
+      storyEl.insertBefore(document.createTextNode(narrative[i++]), cursor);
+      setTimeout(typeChar, 18);
+    } else {
+      cursor.remove();
+    }
+  }
+  typeChar();
+
+  // Columns
+  const colGrid = document.getElementById('colGrid');
+  colGrid.innerHTML = columns.map(col => {
+    const type = numericCols.includes(col) ? 'numeric' : (col.toLowerCase().includes('date') || col.toLowerCase().includes('month') || col.toLowerCase().includes('year') ? 'date' : 'text');
+    const icon = type === 'numeric' ? '📈' : type === 'date' ? '📅' : '🏷️';
+    return `<div class="col-pill ${type}">${icon} <strong>${col}</strong> <span class="col-type">${type}</span></div>`;
+  }).join('');
+
+  // Insights
+  const insightIcons = ['🔍','💡','📊','⚡','🎯','🔥'];
+  const insightTitles = ['Key Finding','Highlight','Trend','Pattern','Peak Value','Standout'];
+  const insightsGrid = document.getElementById('insightsGrid');
+  insightsGrid.innerHTML = insightLines.map((line, i) => `
+    <div class="insight-card">
+      <div class="insight-icon">${insightIcons[i]}</div>
+      <h4>${insightTitles[i]}</h4>
+      <p>${line.replace(/^[-•*]\s*/, '')}</p>
+    </div>
+  `).join('');
+
+  // Charts
+  renderCharts(data, columns, numericCols, textCols, stats);
+}
+
+function renderCharts(data, columns, numericCols, textCols, stats) {
+  const grid = document.getElementById('chartsGrid');
+  grid.innerHTML = '';
+
+  const colors = ['#ff4d3a','#00b4a6','#7c3aed','#f5c842','#3b82f6','#f97316'];
+
+  function addChart(title, subtitle, canvasId) {
+    const card = document.createElement('div');
+    card.className = 'chart-card';
+    card.innerHTML = `<div class="chart-title">${title}</div><div class="chart-subtitle">${subtitle}</div><div class="chart-wrap"><canvas id="${canvasId}"></canvas></div>`;
+    grid.appendChild(card);
+  }
+
+  // Chart 1: Bar chart of first numeric col
+  if (numericCols.length > 0) {
+    const col = numericCols[0];
+    const labelCol = textCols[0] || columns[0];
+    const sample = data.slice(0, 10);
+    const labels = sample.map(r => String(r[labelCol]).substring(0,15));
+    const values = sample.map(r => r[col]);
+    addChart(col + ' Overview', `by ${labelCol}`, 'chart1');
+    const ctx = document.getElementById('chart1').getContext('2d');
+    charts.push(new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{ label: col, data: values, backgroundColor: colors[0], borderRadius: 6, borderSkipped: false }]
+      },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { font: { family: 'DM Sans', size: 10 } } }, y: { ticks: { font: { family: 'DM Sans', size: 10 } } } } }
+    }));
+  }
+
+  // Chart 2: Second numeric col or line chart
+  if (numericCols.length > 1) {
+    const col = numericCols[1];
+    const labelCol = textCols[0] || columns[0];
+    const sample = data.slice(0, 10);
+    const labels = sample.map(r => String(r[labelCol]).substring(0,15));
+    const values = sample.map(r => r[col]);
+    addChart(col + ' Trend', `across records`, 'chart2');
+    const ctx = document.getElementById('chart2').getContext('2d');
+    charts.push(new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{ label: col, data: values, borderColor: colors[1], backgroundColor: colors[1]+'22', tension: 0.4, fill: true, pointBackgroundColor: colors[1], pointRadius: 5 }]
+      },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+    }));
+  }
+
+  // Chart 3: Category distribution (donut)
+  if (textCols.length > 0) {
+    const col = textCols[0];
+    const counts = {};
+    data.forEach(r => { const v = String(r[col]); counts[v] = (counts[v]||0)+1; });
+    const sorted = Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,6);
+    addChart(col + ' Distribution', 'Category breakdown', 'chart3');
+    const ctx = document.getElementById('chart3').getContext('2d');
+    charts.push(new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: sorted.map(x=>x[0]),
+        datasets: [{ data: sorted.map(x=>x[1]), backgroundColor: colors, borderWidth: 2, borderColor: '#faf8f3' }]
+      },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { font: { family: 'DM Sans', size: 10 }, boxWidth: 12 } } } }
+    }));
+  }
+
+  // Chart 4: Scatter if 2+ numerics, else horizontal bar
+  if (numericCols.length >= 2) {
+    const x = numericCols[0], y = numericCols[1];
+    const pts = data.slice(0,50).map(r => ({ x: r[x], y: r[y] }));
+    addChart(`${x} vs ${y}`, 'Correlation scatter', 'chart4');
+    const ctx = document.getElementById('chart4').getContext('2d');
+    charts.push(new Chart(ctx, {
+      type: 'scatter',
+      data: { datasets: [{ label: '', data: pts, backgroundColor: colors[3]+'cc', pointRadius: 6 }] },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { title: { display: true, text: x, font: { family: 'DM Sans', size: 10 } } }, y: { title: { display: true, text: y, font: { family: 'DM Sans', size: 10 } } } } }
+    }));
+  } else if (numericCols.length === 1 && textCols.length > 1) {
+    const col = numericCols[0];
+    const labelCol = textCols[1] || textCols[0];
+    const sample = data.slice(0, 8);
+    addChart('Top ' + col + ' by ' + labelCol, 'Horizontal comparison', 'chart4');
+    const ctx = document.getElementById('chart4').getContext('2d');
+    charts.push(new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: sample.map(r => String(r[labelCol]).substring(0,15)),
+        datasets: [{ label: col, data: sample.map(r => r[col]), backgroundColor: colors[3], borderRadius: 6 }]
+      },
+      options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+    }));
+  }
+}
+</script>
+</body>
+</html>
